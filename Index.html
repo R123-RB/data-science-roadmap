@@ -1,0 +1,835 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0}
+.phase-nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem}
+.ptab{padding:6px 14px;font-size:13px;border:0.5px solid var(--color-border-secondary);border-radius:20px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);transition:all .15s;white-space:nowrap}
+.ptab.on{color:var(--color-text-primary);border-color:var(--color-border-primary);font-weight:500;background:var(--color-background-secondary)}
+.week-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:1rem}
+.wtab{padding:4px 10px;font-size:12px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);transition:all .15s}
+.wtab.on{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-secondary)}
+.phase-meta{display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap}
+.phase-badge{display:inline-block;font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px}
+.phase-desc{font-size:13px;color:var(--color-text-secondary)}
+.week-title{font-size:16px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.week-sub{font-size:13px;color:var(--color-text-secondary);margin-bottom:1rem}
+.days-list{display:flex;flex-direction:column;gap:10px}
+.day-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden}
+.day-header{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none}
+.day-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0}
+.day-info{flex:1;min-width:0}
+.day-name{font-size:11px;color:var(--color-text-tertiary);margin-bottom:1px}
+.day-topic{font-size:14px;font-weight:500;color:var(--color-text-primary)}
+.day-tag{font-size:10px;padding:2px 7px;border-radius:10px;white-space:nowrap;flex-shrink:0}
+.day-body{padding:0 14px 14px 52px;display:none;flex-direction:column;gap:10px}
+.day-body.open{display:flex}
+.section-label{font-size:10px;font-weight:500;letter-spacing:.06em;color:var(--color-text-tertiary);text-transform:uppercase;margin-bottom:4px}
+.pill-row{display:flex;flex-wrap:wrap;gap:5px}
+.pill{font-size:12px;padding:3px 9px;border-radius:12px;background:var(--color-background-secondary);color:var(--color-text-secondary);border:0.5px solid var(--color-border-tertiary)}
+.resource-row{display:flex;flex-direction:column;gap:4px}
+.res{font-size:12px;color:var(--color-text-secondary);display:flex;align-items:flex-start;gap:6px}
+.res-dot{width:5px;height:5px;border-radius:50%;background:var(--color-border-secondary);flex-shrink:0;margin-top:5px}
+.exercise-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px 10px;font-size:12px;color:var(--color-text-secondary);line-height:1.5}
+.exercise-box strong{color:var(--color-text-primary);font-weight:500}
+.chevron{font-size:10px;color:var(--color-text-tertiary);transition:transform .2s}
+.chevron.open{transform:rotate(180deg)}
+.proj-bar{background:var(--color-background-success);border-top:0.5px solid var(--color-border-success);padding:8px 14px 8px 52px}
+.proj-label{font-size:11px;font-weight:500;color:var(--color-text-success)}
+.proj-desc{font-size:12px;color:var(--color-text-secondary);margin-top:2px}
+.prog-wrap{margin-bottom:1rem}
+.prog-track{height:3px;background:var(--color-border-tertiary);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;border-radius:2px;transition:width .3s}
+.prog-label{display:flex;justify-content:space-between;font-size:11px;color:var(--color-text-tertiary);margin-bottom:4px}
+</style>
+<div class="wrap">
+  <div class="phase-nav" id="phase-nav"></div>
+  <div class="prog-wrap">
+    <div class="prog-label"><span id="prog-left"></span><span id="prog-right"></span></div>
+    <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+  </div>
+  <div class="phase-meta">
+    <span class="phase-badge" id="phase-badge"></span>
+    <span class="phase-desc" id="phase-desc"></span>
+  </div>
+  <div class="week-tabs" id="week-tabs"></div>
+  <div class="week-title" id="week-title"></div>
+  <div class="week-sub" id="week-sub"></div>
+  <div class="days-list" id="days-list"></div>
+</div>
+<script>
+const C = {
+  blue:{bg:"#E6F1FB",text:"#185FA5",dot:"#185FA5"},
+  teal:{bg:"#E1F5EE",text:"#0F6E56",dot:"#0F6E56"},
+  purple:{bg:"#EEEDFE",text:"#534AB7",dot:"#534AB7"},
+  coral:{bg:"#FAECE7",text:"#993C1D",dot:"#993C1D"},
+  amber:{bg:"#FAEEDA",text:"#854F0B",dot:"#854F0B"},
+  green:{bg:"#EAF3DE",text:"#3B6D11",dot:"#3B6D11"},
+  gray:{bg:"#F1EFE8",text:"#5F5E5A",dot:"#5F5E5A"}
+};
+const DAY_COLORS = ["blue","teal","purple","coral","amber","green","gray"];
+
+const data = [
+  {phase:"Phase 1",label:"Foundations",color:"blue",desc:"Python · Math · Statistics · Data Wrangling",weeks:[
+    {n:1,title:"Python for data science",sub:"Build the programming muscle you'll use every single day",days:[
+      {name:"Mon",topic:"Python environment & data types",tag:"setup",
+        concepts:["Anaconda/venv setup","Jupyter notebooks","int, float, str, bool, None","type(), isinstance(), casting","f-strings, string methods"],
+        resources:["Python Docs — Built-in Types","Real Python — Python Basics","Google Colab (free GPU notebook)"],
+        exercise:"Write a script that reads a CSV manually (no pandas), parses each row, and prints summary stats (min, max, mean) for a numeric column.",
+        project:null},
+      {name:"Tue",topic:"Control flow, loops & comprehensions",tag:"logic",
+        concepts:["if/elif/else","for loops, while loops","break, continue, pass","list comprehensions","dict & set comprehensions","generator expressions"],
+        resources:["Python Docs — Control Flow","Fluent Python (Ramalho) ch. 2"],
+        exercise:"Implement FizzBuzz, then a prime sieve using only list comprehensions. Profile runtime with %%timeit.",
+        project:null},
+      {name:"Wed",topic:"Functions, scope & functional tools",tag:"functions",
+        concepts:["def, return, default args","*args, **kwargs","lambda, map, filter, zip","decorators (basics)","closures, nonlocal","recursion & memoization"],
+        resources:["Real Python — Decorators","Python Tricks (Bader) ch. 3"],
+        exercise:"Build a memoized Fibonacci function, then a decorator that logs function call times and arguments.",
+        project:null},
+      {name:"Thu",topic:"Data structures deep dive",tag:"structures",
+        concepts:["lists vs tuples vs sets vs dicts","time complexity: O(1) lookup in dicts/sets","namedtuple, dataclass","OrderedDict, defaultdict, Counter","deque, heapq"],
+        resources:["Python Docs — Collections","leetcode.com — easy array/hashmap problems"],
+        exercise:"Implement a word frequency counter and top-N finder using Counter vs manual dict. Benchmark both.",
+        project:null},
+      {name:"Fri",topic:"OOP: classes & design patterns",tag:"OOP",
+        concepts:["__init__, self, class vs instance attrs","inheritance, super()","dunder methods (__repr__, __len__, __eq__)","@classmethod, @staticmethod, @property","abstract classes (abc)","composition vs inheritance"],
+        resources:["Real Python — OOP in Python","Clean Code (Martin) — relevant chapters"],
+        exercise:"Build a Dataset class that wraps a list of dicts, supports len(), iteration, filtering by column value, and pretty-printing.",
+        project:null},
+      {name:"Sat",topic:"File I/O, errors & modules",tag:"I/O",
+        concepts:["open(), read(), write(), context managers","CSV, JSON, YAML handling","try/except/finally, custom exceptions","os, pathlib, glob, shutil","virtual envs, pip, requirements.txt"],
+        resources:["Python Docs — pathlib","Real Python — Working with Files"],
+        exercise:"Build a CLI tool that takes a folder path, finds all CSVs, loads them, and outputs a merged summary file.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],
+        resources:["Kaggle Datasets","Real Python project tutorials"],
+        exercise:null,
+        project:{label:"Data Pipeline CLI",desc:"Build a command-line data processing tool: reads any CSV, shows shape/dtypes/nulls, computes per-column stats, outputs a clean JSON report. Use only the standard library + csv + json modules."}}
+    ]},
+    {n:2,title:"NumPy & Pandas",sub:"The foundation of every data science workflow",days:[
+      {name:"Mon",topic:"NumPy arrays & broadcasting",tag:"NumPy",
+        concepts:["ndarray, dtype, shape, ndim","arange, linspace, zeros, ones, random","indexing, slicing, boolean masks","broadcasting rules","vectorization vs Python loops","np.where, np.select"],
+        resources:["NumPy quickstart tutorial","Jake VanderPlas — Python Data Science Handbook ch.2"],
+        exercise:"Implement a manual z-score normalization using only NumPy broadcasting. Compare speed to a Python loop on 1M rows.",
+        project:null},
+      {name:"Tue",topic:"NumPy linear algebra & random",tag:"NumPy",
+        concepts:["np.dot, np.matmul, @","np.linalg (inv, det, eig, svd)","random seeds, distributions","np.random.Generator (modern API)","np.einsum (intro)"],
+        resources:["NumPy linalg docs","3Blue1Brown — Essence of Linear Algebra (YouTube)"],
+        exercise:"Solve a system of linear equations Ax=b using np.linalg.solve. Then compute the covariance matrix of a dataset manually.",
+        project:null},
+      {name:"Wed",topic:"Pandas Series & DataFrames",tag:"Pandas",
+        concepts:["pd.Series, pd.DataFrame constructors","loc, iloc, at, iat","boolean indexing, .query()","dtypes, astype(), category dtype","setting index, MultiIndex","pd.read_csv, read_json, read_excel"],
+        resources:["Pandas Getting Started docs","Effective Pandas (Matt Harrison)"],
+        exercise:"Load the Titanic dataset. Practice every indexing method to extract specific subsets. Time each approach.",
+        project:null},
+      {name:"Thu",topic:"Data cleaning & transformation",tag:"cleaning",
+        concepts:["isna(), fillna(), dropna(), interpolate()","duplicated(), drop_duplicates()","str accessor (str.lower, str.extract, str.contains)","apply(), map(), applymap() vs vectorized","pd.to_datetime(), dt accessor","clip(), replace(), rename()"],
+        resources:["Pandas docs — Working with text data","Towards Data Science — Data Cleaning articles"],
+        exercise:"Take a messy real-world dataset (e.g. NYC 311 complaints). Fix dtypes, handle nulls, standardize text columns, extract date parts.",
+        project:null},
+      {name:"Fri",topic:"GroupBy, aggregations & time series",tag:"agg",
+        concepts:["groupby().agg(), transform(), filter()","pivot_table(), crosstab()","resample() for time series","rolling(), ewm()","pd.Grouper by time period","named aggregations (pd.NamedAgg)"],
+        resources:["Pandas docs — GroupBy","Tom Augspurger — Modern Pandas (blog series)"],
+        exercise:"Using a sales dataset: compute monthly revenue by region, rolling 3-month avg, and YoY growth % — all in one chained pipeline.",
+        project:null},
+      {name:"Sat",topic:"Merging, reshaping & performance",tag:"reshape",
+        concepts:["merge(), join(), concat()","melt(), stack(), unstack(), pivot()","explode() for list columns","pd.Categorical for memory savings","chunked reading (chunksize=)","swifter, pandarallel for parallelism"],
+        resources:["Pandas docs — Merge/Join","Python for Data Analysis (McKinney) ch.8"],
+        exercise:"Join 3 datasets (orders, customers, products). Reshape wide→long. Reduce memory usage by 50% using Categorical dtypes.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"Full EDA report",desc:"Pick any Kaggle dataset. Produce a complete exploratory analysis: shape, dtypes, null map, univariate distributions, bivariate correlations, top groupby insights, and a written summary of 5 findings. Export as a clean Jupyter notebook."}}
+    ]},
+    {n:3,title:"Statistics & Probability",sub:"The mathematical lens that turns data into decisions",days:[
+      {name:"Mon",topic:"Descriptive statistics",tag:"stats",
+        concepts:["mean, median, mode, range","variance, standard deviation, IQR","skewness, kurtosis","percentiles, quantiles, box plots","robust statistics (trimmed mean, MAD)"],
+        resources:["Khan Academy — Statistics & Probability","Think Stats (Downey) — free online"],
+        exercise:"Compute all descriptive stats manually (no .describe()) on a dataset, then verify with Pandas. Identify 3 outliers using IQR method.",
+        project:null},
+      {name:"Tue",topic:"Probability fundamentals",tag:"probability",
+        concepts:["sample space, events, P(A)","union, intersection, complement","conditional probability P(A|B)","Bayes' theorem","independence vs mutual exclusivity","counting: permutations, combinations"],
+        resources:["Brilliant.org — Probability course","StatQuest — Bayes Theorem (YouTube)"],
+        exercise:"Simulate the Monty Hall problem in Python (10,000 trials). Prove Bayes' theorem numerically for a medical test scenario.",
+        project:null},
+      {name:"Wed",topic:"Probability distributions",tag:"distributions",
+        concepts:["Normal: PDF, CDF, z-score","Binomial: n trials, p probability","Poisson: rate-based events","Bernoulli, Uniform, Exponential","scipy.stats for each distribution","QQ-plots for normality testing"],
+        resources:["scipy.stats docs","StatQuest — Distributions (YouTube)"],
+        exercise:"Fit a Normal and Poisson distribution to real data (e.g., daily website visits). Use chi-square goodness-of-fit test to compare.",
+        project:null},
+      {name:"Thu",topic:"Sampling & the Central Limit Theorem",tag:"CLT",
+        concepts:["population vs sample","sampling methods: random, stratified, cluster","CLT: sample means → Normal","standard error, sampling distribution","bootstrap resampling","law of large numbers"],
+        resources:["StatQuest — CLT (YouTube)","Seeing Theory (visual probability website)"],
+        exercise:"Demonstrate the CLT empirically: sample from a highly skewed distribution, show that means of n=30 samples approach Normal.",
+        project:null},
+      {name:"Fri",topic:"Hypothesis testing",tag:"hypothesis",
+        concepts:["null vs alternative hypothesis","Type I (α) and Type II (β) errors","p-value interpretation","z-test, t-test (one/two sample, paired)","chi-square test of independence","statistical power and effect size (Cohen's d)"],
+        resources:["StatQuest — Hypothesis Testing","Think Stats ch.9"],
+        exercise:"Run a full hypothesis test from scratch: define H0/H1, compute test statistic, find p-value, interpret at α=0.05. Use both manual and scipy.stats.",
+        project:null},
+      {name:"Sat",topic:"Confidence intervals, ANOVA & correlation",tag:"inference",
+        concepts:["CI construction: mean, proportion","one-way ANOVA, F-statistic","Tukey HSD post-hoc test","Pearson vs Spearman correlation","correlation ≠ causation (examples)","multiple testing problem & Bonferroni correction"],
+        resources:["OpenIntro Statistics (free PDF)","StatQuest — ANOVA"],
+        exercise:"Given 4 marketing campaign groups, run a one-way ANOVA and Tukey post-hoc. Report which groups differ significantly.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"A/B test end-to-end",desc:"Simulate a real A/B test (e.g., two landing page variants, n=500 each). Compute conversion rates, run a two-proportion z-test, report p-value, 95% CI, effect size, and a plain-English recommendation."}}
+    ]},
+    {n:4,title:"Visualization & Linear Algebra",sub:"Communicate with data and understand the math behind ML",days:[
+      {name:"Mon",topic:"Matplotlib fundamentals",tag:"viz",
+        concepts:["Figure, Axes, subplots","line, bar, scatter, histogram, pie","titles, labels, legends, annotations","color palettes, style sheets","savefig, DPI, file formats"],
+        resources:["Matplotlib tutorials","Fundamentals of Data Visualization (Wilke) — free online"],
+        exercise:"Recreate 5 chart types from scratch using only Matplotlib. Add proper labels, gridlines, and a consistent color scheme.",
+        project:null},
+      {name:"Tue",topic:"Seaborn & statistical plots",tag:"viz",
+        concepts:["catplot, boxplot, violinplot, barplot","scatterplot, lineplot with hue/size/style","heatmap, clustermap","pairplot, jointplot","FacetGrid for multi-panel plots","Seaborn themes and palettes"],
+        resources:["Seaborn tutorial docs","Python Graph Gallery"],
+        exercise:"Using the Iris or Penguins dataset, create: pairplot, correlation heatmap, violin by species, and a faceted scatter grid.",
+        project:null},
+      {name:"Wed",topic:"Interactive viz with Plotly",tag:"viz",
+        concepts:["plotly.express vs plotly.graph_objects","scatter, line, bar, histogram, box","choropleth maps, bubble charts","animation with frames","dash basics for web dashboards","altair for declarative charts"],
+        resources:["Plotly Express docs","Altair docs"],
+        exercise:"Build an interactive Plotly dashboard: dropdown to select metric, animated time series, hover tooltips with custom text.",
+        project:null},
+      {name:"Thu",topic:"Vectors, matrices & transformations",tag:"linalg",
+        concepts:["vectors: magnitude, direction, dot product","matrices: addition, multiplication, transpose","invertibility, rank, null space","linear transformations (geometric intuition)","change of basis","numpy implementations of all"],
+        resources:["3Blue1Brown — Essence of Linear Algebra (YouTube)","MIT OpenCourseWare 18.06 (Gilbert Strang)"],
+        exercise:"Implement matrix multiplication from scratch (no np.dot). Visualize a 2D linear transformation (rotation, shear, scaling) using Matplotlib.",
+        project:null},
+      {name:"Fri",topic:"Eigenvalues, SVD & calculus for ML",tag:"math",
+        concepts:["eigenvalues & eigenvectors (geometric meaning)","singular value decomposition (SVD)","image compression via SVD (rank-k approx)","derivatives, chain rule, partial derivatives","gradient as direction of steepest ascent","Jacobian, Hessian (intro)"],
+        resources:["3Blue1Brown — Neural Networks (YouTube)","Mathematics for Machine Learning (Deisenroth) — free PDF"],
+        exercise:"Compress a grayscale image using rank-10, rank-50, rank-100 SVD approximations. Plot RMSE vs rank. Compute analytical gradient of MSE loss.",
+        project:null},
+      {name:"Sat",topic:"Gradient descent & optimization intuition",tag:"optimization",
+        concepts:["cost function, loss surface","gradient descent: batch, stochastic, mini-batch","learning rate, momentum, adaptive rates","convex vs non-convex functions","local minima, saddle points","numerical vs analytical gradient check"],
+        resources:["Andrew Ng — ML Course Week 1-2 (Coursera free audit)","Distill.pub — momentum"],
+        exercise:"Implement gradient descent from scratch to minimize a 2D bowl function. Animate the path. Try 5 different learning rates.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"Stats & viz dashboard",desc:"Take a rich public dataset (e.g., World Bank, Our World in Data). Create a multi-panel Plotly dashboard with: trend lines, distribution plots, a correlation heatmap, and a statistical callout box summarizing the 3 most interesting findings."}}
+    ]}
+  ]},
+  {phase:"Phase 2",label:"Core ML",color:"teal",desc:"Scikit-learn · Tree Models · Unsupervised · Time Series",weeks:[
+    {n:5,title:"SQL & data sourcing",sub:"Query, collect, and connect data from the real world",days:[
+      {name:"Mon",topic:"SQL fundamentals",tag:"SQL",
+        concepts:["SELECT, FROM, WHERE, LIMIT, ORDER BY","DISTINCT, aliases, CASE WHEN","AND/OR/NOT, BETWEEN, IN, LIKE","NULL handling: IS NULL, COALESCE, NULLIF","string functions, date functions"],
+        resources:["Mode SQL Tutorial","SQLZoo interactive exercises","pgexercises.com"],
+        exercise:"Using a sample DB (e.g., DVD rental or Northwind), write 10 queries covering each concept. Time each query with EXPLAIN ANALYZE.",
+        project:null},
+      {name:"Tue",topic:"SQL joins & aggregations",tag:"SQL",
+        concepts:["INNER, LEFT, RIGHT, FULL OUTER JOIN","self-joins, cross joins","GROUP BY, HAVING, COUNT, SUM, AVG","subqueries (scalar, correlated)","EXISTS vs IN","set operations: UNION, INTERSECT, EXCEPT"],
+        resources:["LeetCode SQL — easy/medium problems","StrataScratch SQL interview questions"],
+        exercise:"Solve 10 StrataScratch SQL problems at medium difficulty. Write the query, then explain the execution plan.",
+        project:null},
+      {name:"Wed",topic:"Window functions & CTEs",tag:"SQL",
+        concepts:["ROW_NUMBER, RANK, DENSE_RANK","LAG, LEAD, FIRST_VALUE, LAST_VALUE","SUM OVER, AVG OVER (running totals)","PARTITION BY vs GROUP BY","WITH clause (CTEs), recursive CTEs","query optimization: indexes, EXPLAIN"],
+        resources:["Use The Index Luke","Mode Advanced SQL Tutorial"],
+        exercise:"Compute 7-day rolling avg revenue, rank customers by lifetime value within each region, and find each user's first and last order — all in one query.",
+        project:null},
+      {name:"Thu",topic:"Python ↔ database integration",tag:"databases",
+        concepts:["SQLAlchemy Core & ORM","psycopg2 for PostgreSQL","sqlite3 for local dev","pandas.read_sql_query()","connection pooling, context managers","SQLModel (modern FastAPI+SQL)"],
+        resources:["SQLAlchemy docs","SQLite Tutorial"],
+        exercise:"Build a Python script that queries a SQLite database, loads results into Pandas, performs analysis, and writes findings back to a new table.",
+        project:null},
+      {name:"Fri",topic:"APIs & web scraping",tag:"data collection",
+        concepts:["requests library, HTTP verbs","authentication: API keys, OAuth2","pagination, rate limiting, retry logic","JSON parsing, response handling","BeautifulSoup for HTML parsing","robots.txt, ethical scraping"],
+        resources:["requests docs","Beautiful Soup docs","RapidAPI marketplace"],
+        exercise:"Collect 500 data points from a public API (e.g., Open Meteo weather, REST Countries). Handle pagination and store to SQLite.",
+        project:null},
+      {name:"Sat",topic:"Data formats & storage",tag:"data formats",
+        concepts:["CSV vs JSON vs Parquet vs Avro","Parquet: columnar storage, compression","reading Parquet with pandas & pyarrow","HDF5 for large numerical data","Delta Lake basics","data lake vs data warehouse concepts"],
+        resources:["Apache Parquet docs","Towards Data Science — Parquet vs CSV"],
+        exercise:"Convert a 500MB CSV to Parquet. Compare file size, read speed, and memory usage. Profile with %memit and %%timeit.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"SQL analytics report",desc:"Set up a local PostgreSQL DB, load a real dataset (e.g., NYC taxi trips or e-commerce orders). Write 10 business questions, answer each with SQL, then visualize results in Plotly. Export a full report."}}
+    ]},
+    {n:6,title:"ML foundations & linear models",sub:"Learn the core workflow that every ML project follows",days:[
+      {name:"Mon",topic:"The ML workflow & scikit-learn",tag:"ML basics",
+        concepts:["supervised vs unsupervised vs reinforcement","train/val/test split","scikit-learn API: fit(), predict(), score()","Pipeline, ColumnTransformer","data leakage — how to avoid it","sklearn.datasets for practice data"],
+        resources:["scikit-learn User Guide","Hands-On ML (Géron) — ch.1-2","Kaggle — Intro to Machine Learning course"],
+        exercise:"Build your first sklearn Pipeline: imputation → scaling → logistic regression. Measure baseline accuracy on Titanic dataset.",
+        project:null},
+      {name:"Tue",topic:"Linear regression: theory & implementation",tag:"regression",
+        concepts:["OLS: minimizing SSE","Normal equation vs gradient descent","assumptions: linearity, homoscedasticity, independence, normality","R², adjusted R², MSE, RMSE, MAE","residual analysis, Q-Q plots","polynomial features, interaction terms"],
+        resources:["StatQuest — Linear Regression","ISLR ch.3 (free PDF)"],
+        exercise:"Fit linear regression to housing prices manually (normal equation) and with sklearn. Plot residuals. Add polynomial features, measure improvement.",
+        project:null},
+      {name:"Wed",topic:"Logistic regression & classification",tag:"classification",
+        concepts:["sigmoid function, log-odds","binary cross-entropy loss","decision boundary visualization","multi-class: one-vs-rest, softmax","threshold tuning","class_weight for imbalanced data"],
+        resources:["StatQuest — Logistic Regression","ISLR ch.4"],
+        exercise:"Train logistic regression on a medical dataset (e.g., diabetes). Move the threshold from 0.5 to 0.3 and 0.7. Show impact on precision/recall.",
+        project:null},
+      {name:"Thu",topic:"Evaluation metrics",tag:"evaluation",
+        concepts:["confusion matrix, accuracy, precision, recall, F1","ROC curve, AUC-ROC","PR curve (better for imbalanced data)","MCC (Matthews Correlation Coefficient)","log loss, Brier score","regression: MAE, RMSE, MAPE, R²"],
+        resources:["scikit-learn metrics docs","Google ML Crash Course — Classification"],
+        exercise:"For a fraud detection dataset (1% positive class), compare a model evaluated by accuracy vs F1 vs AUC-ROC. Explain why accuracy is misleading.",
+        project:null},
+      {name:"Fri",topic:"Regularization: Lasso, Ridge, ElasticNet",tag:"regularization",
+        concepts:["bias-variance tradeoff","L2 (Ridge): shrinks coefficients","L1 (Lasso): sparse, feature selection","ElasticNet: mix of L1+L2","RidgeCV, LassoCV for automatic alpha selection","regularization path visualization"],
+        resources:["StatQuest — Ridge & Lasso","ISLR ch.6"],
+        exercise:"On a high-dimensional dataset (p > n), show that OLS fails. Add Ridge, Lasso, ElasticNet. Plot coefficients vs alpha. Identify features Lasso eliminates.",
+        project:null},
+      {name:"Sat",topic:"Feature engineering",tag:"features",
+        concepts:["one-hot encoding, ordinal encoding, target encoding","StandardScaler, MinMaxScaler, RobustScaler","log transform for skewed features","binning, KBinsDiscretizer","PolynomialFeatures, interaction terms","FeatureUnion, custom transformers"],
+        resources:["Feature Engineering for ML (Alice Zheng) — book","Kaggle — Feature Engineering course"],
+        exercise:"Take a raw dataset with mixed types. Build a full ColumnTransformer pipeline handling numeric (scale+impute) and categorical (encode) columns.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"House price predictor",desc:"Full regression project on Ames Housing dataset: EDA → feature engineering → Ridge vs Lasso vs ElasticNet → cross-validated RMSE → residual analysis → feature importance plot. Submit to Kaggle."}}
+    ]},
+    {n:7,title:"Tree-based models & tuning",sub:"The most powerful models for tabular data",days:[
+      {name:"Mon",topic:"Decision trees",tag:"trees",
+        concepts:["information gain, entropy, Gini impurity","max_depth, min_samples_split, min_samples_leaf","pruning: pre vs post","regression trees (variance reduction)","feature importance from trees","visualizing trees with graphviz/plot_tree"],
+        resources:["StatQuest — Decision Trees","ISLR ch.8"],
+        exercise:"Train a decision tree of depth 3, 5, 10, unlimited. Plot training vs validation accuracy. Visualize the depth-3 tree and explain a single prediction path.",
+        project:null},
+      {name:"Tue",topic:"Random forests",tag:"ensemble",
+        concepts:["bagging (bootstrap aggregation)","feature subsampling per split (max_features)","OOB (out-of-bag) error estimate","feature importance (MDI & permutation)","Extra Trees (ExtraTreesClassifier)","random forest for regression"],
+        resources:["StatQuest — Random Forests","sklearn ensemble docs"],
+        exercise:"Compare a single decision tree vs random forest on a noisy dataset. Plot learning curves (train size vs accuracy) for both.",
+        project:null},
+      {name:"Wed",topic:"Gradient boosting & XGBoost",tag:"boosting",
+        concepts:["boosting: sequential weak learners","gradient boosting: fit residuals","XGBoost: regularization, parallel trees","learning rate vs n_estimators tradeoff","early stopping with eval_set","SHAP values for XGBoost"],
+        resources:["XGBoost docs","StatQuest — Gradient Boosting","Kaggle — XGBoost course"],
+        exercise:"Beat random forest on a Kaggle competition using XGBoost. Add early stopping. Plot feature importance with both gain and SHAP.",
+        project:null},
+      {name:"Thu",topic:"LightGBM & CatBoost",tag:"boosting",
+        concepts:["LightGBM: leaf-wise vs level-wise growth","histogram-based binning for speed","CatBoost: ordered boosting, native categoricals","GPU training","when to use each library","handling missing values natively"],
+        resources:["LightGBM docs","CatBoost tutorial"],
+        exercise:"Train LightGBM and CatBoost on the same dataset. Compare: training time, AUC, and memory usage. Use native categorical support in CatBoost.",
+        project:null},
+      {name:"Fri",topic:"Hyperparameter tuning",tag:"tuning",
+        concepts:["GridSearchCV, RandomizedSearchCV","Optuna (Bayesian optimization)","Hyperopt, Ray Tune","early pruning of bad trials (Optuna MedianPruner)","tuning strategy: coarse → fine","logging trials, visualizing search space"],
+        resources:["Optuna docs","Kaggle — Hyperparameter Tuning course"],
+        exercise:"Use Optuna to tune XGBoost on a real dataset. Run 50 trials. Plot the optimization history and parameter importances.",
+        project:null},
+      {name:"Sat",topic:"Cross-validation & model selection",tag:"CV",
+        concepts:["K-Fold, StratifiedKFold, RepeatedKFold","TimeSeriesSplit for temporal data","leave-one-out, group K-fold","nested CV for honest evaluation","comparing models: paired t-test on CV scores","cross_val_predict for diagnostics"],
+        resources:["sklearn cross-validation docs","Géron ch.2 — cross-validation section"],
+        exercise:"Compare 5 models (LR, Decision Tree, RF, XGBoost, LightGBM) using 5-fold stratified CV. Run a Wilcoxon signed-rank test to see if the best model is significantly better.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"Kaggle tabular competition",desc:"Join an active Kaggle tabular competition. Submit a baseline (logistic regression), then improve with XGBoost + Optuna tuning + feature engineering. Document your improvement in a GitHub README with a performance table."}}
+    ]},
+    {n:8,title:"Unsupervised learning",sub:"Find hidden structure without labels",days:[
+      {name:"Mon",topic:"K-Means clustering",tag:"clustering",
+        concepts:["centroid initialization (random, k-means++)","elbow method (inertia)","silhouette score, Davies-Bouldin index","k-means++ for better init","mini-batch K-Means for scale","limitations: spherical assumption, sensitivity to outliers"],
+        resources:["sklearn clustering docs","StatQuest — K-Means"],
+        exercise:"Cluster a customer dataset. Try k=2 to 10. Plot elbow + silhouette. Profile each cluster with descriptive stats to name the segments.",
+        project:null},
+      {name:"Tue",topic:"DBSCAN & hierarchical clustering",tag:"clustering",
+        concepts:["DBSCAN: eps, min_samples, core/border/noise points","advantages: arbitrary shapes, outlier detection","agglomerative hierarchical: linkage methods","dendrogram interpretation","choosing cut point","OPTICS for variable density"],
+        resources:["sklearn DBSCAN docs","Scipy hierarchical clustering"],
+        exercise:"Apply DBSCAN to geospatial data (lat/lon). Identify noise points. Compare to K-Means on the same data — which clusters make more geographic sense?",
+        project:null},
+      {name:"Wed",topic:"PCA — principal component analysis",tag:"dim reduction",
+        concepts:["variance explained, scree plot","loadings matrix interpretation","biplot","choosing n_components","PCA for visualization (2D/3D)","PCA as preprocessing before classification"],
+        resources:["StatQuest — PCA","sklearn PCA docs"],
+        exercise:"Apply PCA to a 50-feature dataset. Visualize the first 2 PCs colored by class. Use PCA as a pre-step before SVM — compare accuracy with and without.",
+        project:null},
+      {name:"Thu",topic:"t-SNE & UMAP for visualization",tag:"dim reduction",
+        concepts:["t-SNE: perplexity, early exaggeration","UMAP: n_neighbors, min_dist","interpreting 2D embeddings (distances not reliable in t-SNE)","UMAP as general-purpose reducer (faster, more faithful)","embedding word vectors, images, tabular data"],
+        resources:["UMAP docs","Distill.pub — How t-SNE Works"],
+        exercise:"Embed the MNIST 784-dim data into 2D using PCA, t-SNE, and UMAP. Compare cluster separation. Time each method on 10,000 samples.",
+        project:null},
+      {name:"Fri",topic:"Anomaly detection",tag:"anomaly",
+        concepts:["Isolation Forest: path length = anomaly score","One-Class SVM: boundary around normal data","Local Outlier Factor (LOF)","Elliptic Envelope (Gaussian assumption)","threshold selection: precision-recall","evaluation when labels are rare"],
+        resources:["sklearn anomaly detection docs","KDD Cup datasets for practice"],
+        exercise:"Apply all 4 anomaly detectors to a credit card fraud dataset. Compare detection rates. Tune contamination parameter.",
+        project:null},
+      {name:"Sat",topic:"Association rules & recommendation basics",tag:"association",
+        concepts:["market basket analysis","support, confidence, lift, conviction","Apriori algorithm","FP-Growth (faster alternative)","collaborative filtering (user-based, item-based) intro","content-based filtering intro"],
+        resources:["mlxtend library docs","Towards Data Science — Association Rules"],
+        exercise:"Run Apriori on a grocery transaction dataset. Extract top 20 rules by lift. Interpret 5 rules in plain business language.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"Customer segmentation system",desc:"On an e-commerce dataset (e.g., UCI Online Retail): RFM feature engineering → K-Means segmentation → PCA visualization → DBSCAN comparison → business profile for each segment → recommendation for each segment. Full notebook + executive summary."}}
+    ]},
+    {n:9,title:"SVMs, other classifiers & time series",sub:"Round out your classical ML toolkit",days:[
+      {name:"Mon",topic:"Support vector machines",tag:"SVM",
+        concepts:["maximum margin classifier","soft margin, C parameter","kernel trick: RBF, polynomial, sigmoid","SVC vs LinearSVC (speed)","support vectors, decision boundary","SVR for regression"],
+        resources:["StatQuest — SVM","ISLR ch.9"],
+        exercise:"Compare SVM with RBF vs linear kernel on a non-linearly separable dataset. Visualize decision boundaries in 2D. Grid-search C and gamma.",
+        project:null},
+      {name:"Tue",topic:"Naive Bayes & kNN",tag:"classifiers",
+        concepts:["Gaussian, Multinomial, Bernoulli NB","likelihood calculation, Laplace smoothing","NB for text classification (fast baseline)","kNN: choosing k, distance metrics","curse of dimensionality","kNN for regression, KD-Tree vs Ball-Tree"],
+        resources:["sklearn Naive Bayes docs","ISLR ch.4 — discriminant analysis"],
+        exercise:"Use Multinomial NB as a text classification baseline on 20 Newsgroups. Then use kNN — compare accuracy, training time, prediction time.",
+        project:null},
+      {name:"Wed",topic:"Time series: concepts & decomposition",tag:"time series",
+        concepts:["trend, seasonality, cyclicality, residual","additive vs multiplicative decomposition","statsmodels seasonal_decompose","stationarity: ADF test, KPSS test","differencing to achieve stationarity","autocorrelation (ACF) and partial ACF (PACF) plots"],
+        resources:["Forecasting: Principles and Practice (Hyndman) — free online","statsmodels time series tutorial"],
+        exercise:"Decompose a retail sales time series. Run ADF test. Plot ACF/PACF. Make the series stationary by differencing. Verify stationarity.",
+        project:null},
+      {name:"Thu",topic:"ARIMA & exponential smoothing",tag:"time series",
+        concepts:["AR(p), MA(q), ARMA, ARIMA(p,d,q)","selecting p,d,q from ACF/PACF","auto_arima (pmdarima)","SARIMA for seasonal series","exponential smoothing (Holt-Winters)","evaluating forecasts: RMSE, MAPE, SMAPE"],
+        resources:["pmdarima docs","Hyndman — Forecasting ch.8"],
+        exercise:"Forecast 6 months of retail sales using ARIMA and Holt-Winters. Compare RMSE on holdout set. Plot forecast with confidence intervals.",
+        project:null},
+      {name:"Fri",topic:"Prophet & ML for time series",tag:"time series",
+        concepts:["Prophet: trend, seasonality components","adding custom seasonalities and holidays","uncertainty intervals","LightGBM for time series (lag features, rolling stats)","target encoding for categorical time vars","walk-forward validation"],
+        resources:["Prophet docs","Kaggle — Store Sales forecasting"],
+        exercise:"Apply Prophet to a multi-seasonal time series. Add holiday effects. Compare to a LightGBM model trained on lag features with walk-forward CV.",
+        project:null},
+      {name:"Sat",topic:"Model pipelines & stacking",tag:"advanced",
+        concepts:["sklearn Pipeline best practices","ColumnTransformer for heterogeneous data","custom Transformer classes","VotingClassifier, VotingRegressor","StackingClassifier, StackingRegressor","blending: averaging, weighted averaging"],
+        resources:["sklearn Pipeline docs","MLWave — Kaggle ensembling guide"],
+        exercise:"Build a stacking ensemble: LR + RF + XGBoost as level-1 models, Ridge as meta-learner. Compare to any single model using cross-validated RMSE.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"Time series forecast app",desc:"Download a real time series (e.g., energy consumption, stock prices, retail sales). Apply 3 models: SARIMA, Prophet, LightGBM with lags. Walk-forward evaluation. Deploy a simple Streamlit app that plots forecast + confidence intervals."}}
+    ]}
+  ]},
+  {phase:"Phase 3",label:"Deep Learning",color:"purple",desc:"PyTorch · CNNs · Transformers · LLMs · RL",weeks:[
+    {n:10,title:"Neural networks from scratch",sub:"Understand every weight, gradient, and activation",days:[
+      {name:"Mon",topic:"Perceptrons & multi-layer networks",tag:"foundations",
+        concepts:["biological neuron analogy","weighted sum + bias","forward propagation through layers","network depth vs width","universal approximation theorem","matrix form of forward pass"],
+        resources:["3Blue1Brown — Neural Networks (YouTube)","Neural Networks and Deep Learning (Nielsen) — free online"],
+        exercise:"Implement a 2-layer network from scratch (pure NumPy). Train on XOR problem. Verify with visualized decision boundary.",
+        project:null},
+      {name:"Tue",topic:"Backpropagation",tag:"backprop",
+        concepts:["chain rule for nested functions","computational graph","gradient flow through operations","vanishing/exploding gradients","gradient clipping","numerical gradient checking"],
+        resources:["Andrej Karpathy — micrograd (GitHub)","CS231n — Backprop notes"],
+        exercise:"Implement backprop manually for a 3-layer network. Verify gradients with numerical gradient check (tolerance 1e-7).",
+        project:null},
+      {name:"Wed",topic:"Activations, loss functions & optimizers",tag:"components",
+        concepts:["ReLU, Leaky ReLU, ELU, GELU","sigmoid, tanh, softmax","MSE, binary cross-entropy, categorical cross-entropy","SGD with momentum","Adam, AdamW, RMSProp","learning rate schedules: step, cosine, warmup"],
+        resources:["Lilian Weng — The Loss Surfaces blog","PyTorch optim docs"],
+        exercise:"Train the same network with SGD, Adam, and RMSProp. Plot loss curves. Experiment with cosine annealing vs step decay.",
+        project:null},
+      {name:"Thu",topic:"Regularization & normalization",tag:"regularization",
+        concepts:["dropout: probability, inference mode","batch normalization: running mean/var","layer normalization (used in transformers)","weight initialization: Xavier, Kaiming","L1/L2 weight decay in optimizers","data augmentation as regularization"],
+        resources:["Dropout paper (Srivastava 2014)","Batch Normalization paper (Ioffe 2015)"],
+        exercise:"Train a 5-layer network on CIFAR-10 without any regularization, then add dropout + batch norm. Compare val accuracy curves.",
+        project:null},
+      {name:"Fri",topic:"PyTorch fundamentals",tag:"PyTorch",
+        concepts:["Tensor creation, dtype, device (CPU/GPU)","autograd: requires_grad, .backward(), .grad","nn.Module, __init__ and forward()","nn.Linear, nn.ReLU, nn.Sequential","DataLoader, Dataset, custom datasets","training loop boilerplate"],
+        resources:["PyTorch official tutorial","Fast.ai — Practical Deep Learning (free)"],
+        exercise:"Implement the same network twice: once in pure NumPy, once in PyTorch. Verify identical outputs and gradients.",
+        project:null},
+      {name:"Sat",topic:"Training best practices",tag:"training",
+        concepts:["train/val/test splits for DL","batch size effect on training dynamics","gradient accumulation for large batch sim","mixed precision training (torch.cuda.amp)","torch.compile (PyTorch 2.0)","TensorBoard & WandB logging"],
+        resources:["WandB docs","Lightning.ai — PyTorch Lightning"],
+        exercise:"Add TensorBoard logging to your training loop. Track: loss, accuracy, learning rate, gradient norms. Use WandB for experiment comparison.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"MNIST classifier from scratch",desc:"Build a 3-layer MLP in PyTorch for MNIST. Track all metrics in WandB. Reach >98% accuracy. Write a blog-style notebook explaining every design decision: architecture, optimizer, learning rate schedule, regularization."}}
+    ]},
+    {n:11,title:"Convolutional neural networks",sub:"The architecture that revolutionized computer vision",days:[
+      {name:"Mon",topic:"Convolutions & architecture components",tag:"CNN",
+        concepts:["convolution: kernel, stride, padding, dilation","feature maps, receptive field","pooling: max, average, global average","parameter count calculation","1×1 convolutions (pointwise)","depthwise separable convolutions (efficiency)"],
+        resources:["CS231n — CNN notes","d2l.ai — Convolutional Neural Networks"],
+        exercise:"Manually compute the output of a 3×3 conv on a 5×5 input. Calculate parameter count for a VGG-like network. Build a simple CNN in PyTorch.",
+        project:null},
+      {name:"Tue",topic:"Classic architectures",tag:"architectures",
+        concepts:["LeNet-5 (original CNN)","AlexNet (depth + ReLU + dropout)","VGG (depth with small kernels)","GoogLeNet/Inception (branching)","ResNet (skip connections, batch norm)","EfficientNet (compound scaling)"],
+        resources:["Papers with Code — Image Classification","PyTorch torchvision models"],
+        exercise:"Load pretrained ResNet-50. Visualize feature maps at each layer for a sample image. Count total parameters and FLOPs.",
+        project:null},
+      {name:"Wed",topic:"Transfer learning & fine-tuning",tag:"transfer",
+        concepts:["feature extraction vs fine-tuning","freezing layers, unfreezing progressively","custom classification head","learning rate differential (lower for earlier layers)","domain adaptation concepts","few-shot learning intro"],
+        resources:["Fast.ai — Transfer Learning","PyTorch Transfer Learning tutorial"],
+        exercise:"Fine-tune ResNet-18 on a custom 5-class dataset (e.g., flower types). Compare: training from scratch vs feature extraction vs full fine-tune. Plot all three learning curves.",
+        project:null},
+      {name:"Thu",topic:"Data augmentation & regularization",tag:"augmentation",
+        concepts:["torchvision.transforms: flip, crop, jitter, rotate","RandAugment, AutoAugment","CutMix, MixUp, AugMix","test-time augmentation (TTA)","label smoothing","stochastic depth (DropPath)"],
+        resources:["Albumentations library docs","timm (pytorch-image-models) library"],
+        exercise:"Train ResNet on a small dataset (e.g., 500 images) without augmentation, then with aggressive augmentation. Measure val accuracy improvement.",
+        project:null},
+      {name:"Fri",topic:"Object detection overview",tag:"detection",
+        concepts:["bounding box regression, IoU, NMS","anchor boxes, anchor-free detection","YOLO v5/v8 architecture","Faster R-CNN, FPN (feature pyramid)","evaluation: mAP at various IoU thresholds","inference: confidence threshold, NMS threshold"],
+        resources:["Ultralytics YOLOv8 docs","PyTorch Object Detection tutorial"],
+        exercise:"Run YOLOv8 inference on a video or image set. Fine-tune YOLOv8n on a small custom dataset using Roboflow data.",
+        project:null},
+      {name:"Sat",topic:"Segmentation & vision transformers",tag:"advanced vision",
+        concepts:["semantic vs instance vs panoptic segmentation","U-Net: encoder-decoder with skip connections","Mask R-CNN for instance seg","Vision Transformer (ViT): patch embeddings","DeiT, Swin Transformer","SAM (Segment Anything Model) demo"],
+        resources:["U-Net paper (Ronneberger 2015)","Hugging Face — ViT tutorial"],
+        exercise:"Apply a pretrained SAM model to automatically segment objects in 10 images. Evaluate qualitatively. Compare to a fine-tuned U-Net on the same images.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"Custom image classifier",desc:"Build a production-quality image classifier: collect or use a dataset of ≥5 classes. Fine-tune EfficientNet-B0. Apply aggressive augmentation. Reach >90% val accuracy. Wrap in a Gradio app with a drag-and-drop interface. Deploy to Hugging Face Spaces."}}
+    ]},
+    {n:12,title:"NLP & text data",sub:"From raw text to semantic understanding",days:[
+      {name:"Mon",topic:"Text preprocessing & classical NLP",tag:"NLP basics",
+        concepts:["tokenization (word, sentence, subword)","lowercasing, punctuation removal, stopwords","stemming (Porter, Snowball) vs lemmatization (spaCy)","named entity recognition (NER)","POS tagging","spaCy pipeline overview"],
+        resources:["spaCy 101 tutorial","NLTK book (free online)"],
+        exercise:"Build a full spaCy preprocessing pipeline: tokenize, remove stops, lemmatize, extract entities, POS-tag. Run on 1000 news articles.",
+        project:null},
+      {name:"Tue",topic:"Bag-of-words, TF-IDF & topic modeling",tag:"representations",
+        concepts:["CountVectorizer, TfidfVectorizer","n-grams (bigrams, trigrams)","cosine similarity for document similarity","Latent Dirichlet Allocation (LDA) for topic modeling","gensim for LDA","pyLDAvis for topic visualization"],
+        resources:["sklearn text feature extraction docs","Gensim LDA tutorial"],
+        exercise:"Train LDA on 20 Newsgroups. Extract 10 topics. Visualize with pyLDAvis. Manually label each topic. Compute topic coherence score.",
+        project:null},
+      {name:"Wed",topic:"Word embeddings",tag:"embeddings",
+        concepts:["Word2Vec: CBOW vs Skip-gram","GloVe: global co-occurrence matrix","fastText: subword embeddings (handles OOV)","cosine similarity, analogy tasks (king-man+woman=queen)","training your own vs using pretrained","sentence embeddings via averaging"],
+        resources:["Gensim Word2Vec tutorial","Stanford GloVe project page"],
+        exercise:"Load pretrained GloVe vectors. Find top-10 nearest neighbors for 5 words. Solve analogy tasks. Visualize 50 words with t-SNE.",
+        project:null},
+      {name:"Thu",topic:"RNNs, LSTMs & GRUs",tag:"sequence models",
+        concepts:["RNN: hidden state, unrolling through time","vanishing gradient in RNNs","LSTM: forget, input, output gates","GRU: simpler gating, similar performance","bidirectional RNNs","sequence-to-sequence architecture"],
+        resources:["Colah's blog — Understanding LSTMs","d2l.ai — RNN chapter"],
+        exercise:"Build an LSTM for character-level language modeling on Shakespeare. Generate text. Compare generated quality at temperature 0.5 vs 1.0 vs 1.5.",
+        project:null},
+      {name:"Fri",topic:"Transformers & self-attention",tag:"transformers",
+        concepts:["attention: queries, keys, values","scaled dot-product attention","multi-head attention","positional encoding","encoder: BERT-style","decoder: GPT-style","encoder-decoder: T5/BART-style"],
+        resources:["The Illustrated Transformer (Alammar blog)","Attention Is All You Need paper"],
+        exercise:"Implement scaled dot-product attention from scratch in PyTorch. Build a 2-layer transformer encoder. Train on a toy classification task.",
+        project:null},
+      {name:"Sat",topic:"Hugging Face ecosystem",tag:"HuggingFace",
+        concepts:["AutoTokenizer, AutoModel, AutoModelForSequenceClassification","Trainer API vs manual training loop","datasets library for NLP data","pipeline() for zero-shot inference","model hub: searching and loading","tokenizer: BPE, WordPiece, SentencePiece"],
+        resources:["Hugging Face NLP Course (free)","Hugging Face docs"],
+        exercise:"Fine-tune DistilBERT on SST-2 (sentiment). Use the Trainer API. Log to WandB. Evaluate on the test set. Push the model to HF Hub.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"NLP classification system",desc:"Pick a multi-class text classification task (e.g., news categorization, support ticket routing). Compare: TF-IDF + LogReg baseline → LSTM → fine-tuned BERT. Report accuracy, F1, training time, inference time. Deploy with Gradio."}}
+    ]},
+    {n:13,title:"Generative AI & LLMs",sub:"Build with the most powerful AI systems ever created",days:[
+      {name:"Mon",topic:"LLM architecture & inference",tag:"LLMs",
+        concepts:["tokenization: BPE, tiktoken","context window, attention complexity O(n²)","temperature, top-p, top-k sampling","repetition penalty, presence penalty","KV-cache for fast inference","quantization: INT8, INT4 for memory savings"],
+        resources:["Andrej Karpathy — Let's build GPT (YouTube)","The Illustrated GPT-2 (Alammar)"],
+        exercise:"Run llama.cpp locally with a quantized 7B model. Experiment with temperature values. Measure tokens/second. Compare quality at different quantizations.",
+        project:null},
+      {name:"Tue",topic:"Prompt engineering",tag:"prompting",
+        concepts:["zero-shot, one-shot, few-shot prompting","chain-of-thought (CoT) prompting","tree-of-thought, self-consistency","role prompting, system messages","structured output with JSON mode","prompt injection attacks and defenses"],
+        resources:["Anthropic Prompt Engineering docs","Learn Prompting (free website)"],
+        exercise:"For a complex reasoning task, compare: zero-shot vs few-shot vs chain-of-thought vs self-consistency (5 samples). Measure accuracy on 20 test cases.",
+        project:null},
+      {name:"Wed",topic:"RAG — retrieval augmented generation",tag:"RAG",
+        concepts:["embeddings for semantic search (sentence-transformers)","FAISS, Chroma, Pinecone, Qdrant","chunking strategies: fixed, recursive, semantic","retrieval: BM25 vs dense vs hybrid","reranking with cross-encoders","RAG evaluation: RAGAS framework"],
+        resources:["LangChain RAG tutorial","RAGAS docs"],
+        exercise:"Build a RAG system: ingest a 100-page PDF → chunk → embed with sentence-transformers → store in FAISS → query with GPT-3.5. Evaluate with RAGAS.",
+        project:null},
+      {name:"Thu",topic:"Fine-tuning LLMs",tag:"fine-tuning",
+        concepts:["full fine-tuning vs parameter-efficient fine-tuning","LoRA: low-rank weight updates","QLoRA: quantized LoRA (4-bit)","instruction tuning, chat format","dataset preparation: Alpaca format","Hugging Face PEFT library, trl library"],
+        resources:["Hugging Face PEFT docs","Tim Dettmers — QLoRA paper"],
+        exercise:"Fine-tune Llama-3-8B with QLoRA on a custom instruction dataset using PEFT + trl. Run on Google Colab T4 GPU. Compare outputs before and after.",
+        project:null},
+      {name:"Fri",topic:"LangChain, agents & function calling",tag:"agents",
+        concepts:["LangChain chains, prompts, parsers","agents: ReAct, tool-calling","function calling with OpenAI API","memory: buffer, summary, vector store","LangGraph for stateful agents","evaluation of agent behavior"],
+        resources:["LangChain docs","OpenAI function calling docs"],
+        exercise:"Build a ReAct agent with 3 tools: web search, Python REPL, and a calculator. Test on 10 complex questions. Trace and log all tool calls.",
+        project:null},
+      {name:"Sat",topic:"GANs & diffusion models",tag:"generative",
+        concepts:["GAN: generator vs discriminator, minimax loss","training instability, mode collapse","conditional GANs (cGAN), DCGAN","diffusion: forward noising process, denoising score matching","DDPM, DDIM (faster sampling)","Stable Diffusion architecture overview"],
+        resources:["GAN Lab (interactive visualization)","Hugging Face Diffusers docs"],
+        exercise:"Train a DCGAN on MNIST. Generate 100 samples. Compute FID score. Then use Stable Diffusion XL via diffusers for text-to-image generation.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"RAG document chatbot",desc:"Build a full RAG chatbot for a domain of your choice (e.g., medical papers, legal docs, your own notes). Use LangChain + FAISS + GPT-4. Add conversational memory, source citation in responses, and a Streamlit UI. Evaluate retrieval quality with RAGAS."}}
+    ]},
+    {n:14,title:"Reinforcement learning",sub:"Teaching agents to act, not just predict",days:[
+      {name:"Mon",topic:"RL fundamentals & MDPs",tag:"RL basics",
+        concepts:["agent, environment, state, action, reward","Markov Decision Process (MDP)","policy: deterministic vs stochastic","value function V(s), Q-function Q(s,a)","Bellman equations","exploration vs exploitation tradeoff"],
+        resources:["Sutton & Barto — RL: An Introduction (free PDF)","David Silver RL Course (YouTube)"],
+        exercise:"Implement a grid-world MDP from scratch. Solve it using value iteration. Visualize the value function and optimal policy as a heatmap.",
+        project:null},
+      {name:"Tue",topic:"Q-learning & Deep Q-Networks",tag:"DQN",
+        concepts:["Q-table: tabular Q-learning","epsilon-greedy exploration","Q-learning update rule","experience replay buffer","target network (frozen Q-network)","DQN improvements: double DQN, dueling DQN, prioritized replay"],
+        resources:["DeepMind DQN paper (Mnih 2015)","CleanRL — DQN implementation"],
+        exercise:"Implement Q-learning for FrozenLake (tabular). Then implement DQN with experience replay for CartPole. Train to 200 reward.",
+        project:null},
+      {name:"Wed",topic:"Policy gradient methods",tag:"policy grad",
+        concepts:["REINFORCE algorithm","baseline subtraction to reduce variance","actor-critic architecture (A2C)","proximal policy optimization (PPO)","clipping objective, entropy bonus","advantage estimation (GAE)"],
+        resources:["Lilian Weng — Policy Gradient Algorithms blog","CleanRL — PPO implementation"],
+        exercise:"Implement PPO with CleanRL on LunarLander-v2. Train to solved benchmark (200 reward). Plot episode return with confidence bands.",
+        project:null},
+      {name:"Thu",topic:"Multi-armed bandits & exploration",tag:"bandits",
+        concepts:["exploration vs exploitation dilemma","greedy, epsilon-greedy","UCB1 (upper confidence bound)","Thompson sampling (Bayesian)","contextual bandits","bandits for recommendation systems, A/B testing"],
+        resources:["Bandit Algorithms book (Lattimore) — free PDF","ContextualBandits — practical guide"],
+        exercise:"Simulate a 10-armed bandit for 10,000 steps with: greedy, ε-greedy (0.1, 0.01), UCB1, Thompson sampling. Plot cumulative regret for all.",
+        project:null},
+      {name:"Fri",topic:"Gymnasium & stable-baselines3",tag:"tools",
+        concepts:["Gymnasium (formerly OpenAI Gym) API","environment wrappers (VecEnv, Monitor)","stable-baselines3: PPO, SAC, TD3","custom environment creation","video rendering and recording","hyperparameter tuning for RL (rl-baselines3-zoo)"],
+        resources:["Gymnasium docs","stable-baselines3 docs"],
+        exercise:"Create a custom Gymnasium environment (your own problem). Train PPO on it. Compare PPO vs SAC vs TD3 on a continuous control task.",
+        project:null},
+      {name:"Sat",topic:"RLHF & alignment",tag:"RLHF",
+        concepts:["RLHF: reward model from human preferences","Constitutional AI (CAI)","proximal policy optimization for LLMs","DPO (Direct Preference Optimization)","reward hacking, Goodhart's Law","TRL library for RLHF on LLMs"],
+        resources:["InstructGPT paper (Ouyang 2022)","TRL docs — RLHF tutorial"],
+        exercise:"Use TRL to run a toy RLHF pipeline: fine-tune a small LLM with a reward model that prefers helpful responses. Compare pre/post RLHF outputs on 10 prompts.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"Train a game-playing agent",desc:"Train a PPO agent to solve LunarLander-v2 or a custom environment. Document: architecture, hyperparameters, training curves, ablations (with and without entropy bonus, with and without GAE). Record a video of the trained agent. Push to GitHub with a full README."}}
+    ]}
+  ]},
+  {phase:"Phase 4",label:"Production",color:"coral",desc:"MLOps · Deployment · Big Data · Portfolio",weeks:[
+    {n:15,title:"MLOps & experiment tracking",sub:"Bridge the gap between notebooks and production",days:[
+      {name:"Mon",topic:"MLflow for experiment tracking",tag:"MLflow",
+        concepts:["MLflow Tracking: runs, params, metrics, tags","MLflow Projects: reproducible runs","MLflow Models: model registry, staging/production","autolog for sklearn, XGBoost, PyTorch","MLflow UI: comparing runs, visualizing metrics","model versioning and lifecycle management"],
+        resources:["MLflow docs","MLOps Zoomcamp (free GitHub course)"],
+        exercise:"Convert a notebook-based ML experiment to MLflow: log all params, metrics, and the model artifact. Compare 5 experiments in the MLflow UI.",
+        project:null},
+      {name:"Tue",topic:"DVC — data version control",tag:"DVC",
+        concepts:["DVC pipelines: stages, dependencies, outputs","remote storage (S3, GCS, local)","dvc.yaml, dvc.lock","dvc repro for reproducibility","data and model versioning (dvc push/pull)","DVC + Git workflow"],
+        resources:["DVC docs — Get Started","iterative.ai blog"],
+        exercise:"Convert a project to a DVC pipeline: data download → preprocess → train → evaluate. Version 3 different dataset versions. Reproduce any version in one command.",
+        project:null},
+      {name:"Wed",topic:"Docker for data science",tag:"Docker",
+        concepts:["Dockerfile: FROM, RUN, COPY, CMD","building and tagging images","docker run, volumes, environment variables","docker-compose for multi-service setups","multi-stage builds for slim images","GPU access in Docker (nvidia-docker)"],
+        resources:["Docker official docs — Getting Started","Full Stack Deep Learning — Docker for ML"],
+        exercise:"Containerize a scikit-learn model with a FastAPI endpoint. Build the image, run it, hit the /predict endpoint from curl. Verify reproducibility on a fresh machine.",
+        project:null},
+      {name:"Thu",topic:"CI/CD for ML",tag:"CI/CD",
+        concepts:["GitHub Actions: workflow YAML","automated testing: pytest for ML code","data validation (Great Expectations, Pandera)","model quality gates (accuracy threshold)","triggering retraining on data drift","pre-commit hooks for code quality"],
+        resources:["GitHub Actions docs","Great Expectations docs"],
+        exercise:"Set up a GitHub Actions workflow that: lints code, runs unit tests, validates data schema, trains a model, and fails if val accuracy < threshold.",
+        project:null},
+      {name:"Fri",topic:"Model monitoring & data drift",tag:"monitoring",
+        concepts:["data drift: covariate shift, concept drift","Evidently AI: drift reports","reference dataset vs production data","statistical tests for drift (KS test, PSI)","alert systems (Grafana, email)","model retraining triggers"],
+        resources:["Evidently AI docs","WhyLabs platform overview"],
+        exercise:"Simulate data drift by gradually shifting feature distributions. Run Evidently to detect it. Build a monitoring dashboard showing drift over time.",
+        project:null},
+      {name:"Sat",topic:"Feature stores",tag:"feature stores",
+        concepts:["what is a feature store and why","online vs offline store","point-in-time correct joins (training)","Feast: feature repo, push/retrieve","Feature consistency: training-serving skew","Tecton and Vertex AI Feature Store overview"],
+        resources:["Feast docs","Chip Huyen — Designing ML Systems ch.7"],
+        exercise:"Set up Feast locally. Define features for a fraud detection use case. Retrieve historical features for training and simulate online serving.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"End-to-end ML pipeline",desc:"Build a complete reproducible ML pipeline: DVC for data/model versioning + MLflow for tracking + GitHub Actions CI/CD + Docker packaging. Train on a real dataset. Every stage reproducible in one command. Document fully in README."}}
+    ]},
+    {n:16,title:"Model deployment",sub:"Take your models from laptop to the real world",days:[
+      {name:"Mon",topic:"FastAPI for ML serving",tag:"FastAPI",
+        concepts:["FastAPI basics: routes, path params, query params","Pydantic models for input validation","async endpoints","automatic OpenAPI/Swagger docs","/health and /predict endpoints","loading models at startup (lifespan events)"],
+        resources:["FastAPI docs — Tutorial","Full Stack FastAPI template"],
+        exercise:"Build a FastAPI service for your XGBoost model: POST /predict returns prediction + probability. Add /health endpoint. Test with Postman or httpie.",
+        project:null},
+      {name:"Tue",topic:"Containerizing & deploying APIs",tag:"deployment",
+        concepts:["Dockerfile for FastAPI","gunicorn + uvicorn workers","environment variables for config","docker-compose with Redis for caching","pushing to Docker Hub or ECR","cloud run (GCP), App Service (Azure), Elastic Beanstalk"],
+        resources:["uvicorn docs","Google Cloud Run quickstart"],
+        exercise:"Deploy your FastAPI ML service to Google Cloud Run. Generate a public URL. Test latency. Scale from 0 to 10 instances under load.",
+        project:null},
+      {name:"Wed",topic:"Cloud ML platforms",tag:"cloud",
+        concepts:["AWS SageMaker: training jobs, endpoints, pipelines","GCP Vertex AI: AutoML, custom training","Azure ML: workspaces, experiments","managed endpoints: scaling, A/B routing","cost optimization: spot instances, right-sizing","Terraform for infrastructure as code (intro)"],
+        resources:["SageMaker developer guide","Vertex AI docs"],
+        exercise:"Deploy a model as a SageMaker endpoint (or Vertex AI). Set up auto-scaling. Monitor endpoint metrics (latency, invocations, errors) in CloudWatch/Cloud Monitoring.",
+        project:null},
+      {name:"Thu",topic:"Streamlit & Gradio apps",tag:"UI",
+        concepts:["Streamlit: st.write, st.dataframe, st.chart, st.map","session state for interactivity","file uploader, form inputs","Gradio: Interface, Blocks","sharing to Hugging Face Spaces","custom CSS and theming"],
+        resources:["Streamlit docs","Gradio docs"],
+        exercise:"Build a Streamlit app with: dataset upload → EDA → model training (3 algorithms) → comparison plots → download results CSV.",
+        project:null},
+      {name:"Fri",topic:"Model optimization for production",tag:"optimization",
+        concepts:["ONNX: framework-agnostic model format","TorchScript for PyTorch production","quantization: INT8, dynamic vs static","pruning: weight, structured","knowledge distillation","TensorRT for GPU inference acceleration"],
+        resources:["ONNX docs","TensorRT developer guide"],
+        exercise:"Export a PyTorch model to ONNX. Measure inference speedup vs PyTorch eager mode. Apply dynamic INT8 quantization and measure accuracy vs speed tradeoff.",
+        project:null},
+      {name:"Sat",topic:"A/B testing & canary deployments",tag:"deployment strategy",
+        concepts:["blue-green deployment","canary releases (5% → 25% → 100% traffic)","shadow mode testing","A/B testing ML models in production","statistical significance for production experiments","feature flags for model rollouts"],
+        resources:["Netflix Tech Blog — ML deployment","Chip Huyen — Real-time ML"],
+        exercise:"Simulate a production A/B test: route 10% of traffic to a new model, 90% to old. After 1000 requests, compare metrics. Compute if difference is significant.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"Deployed ML API + app",desc:"End-to-end deployment: train a model → wrap in FastAPI → Dockerize → deploy to cloud (GCP Cloud Run or AWS Lambda) → build a Streamlit front-end → connect front-end to API. Share a live URL. Add a GitHub Actions CI/CD pipeline."}}
+    ]},
+    {n:17,title:"Big data & advanced topics",sub:"Scale your work to billions of rows and cutting-edge techniques",days:[
+      {name:"Mon",topic:"Apache Spark & PySpark",tag:"Spark",
+        concepts:["RDDs vs DataFrames vs Datasets","SparkSession, SparkContext","transformations (lazy) vs actions (eager)","SparkSQL: reading parquet, running SQL","partitioning, shuffling, broadcast joins","spark.ml for distributed ML"],
+        resources:["PySpark docs","Databricks — PySpark tutorial"],
+        exercise:"Load a 1GB dataset into PySpark. Run 5 SQL aggregations. Benchmark vs Pandas. Optimize with broadcast join and caching.",
+        project:null},
+      {name:"Tue",topic:"Distributed computing with Dask & Ray",tag:"distributed",
+        concepts:["Dask: lazy DataFrames, task graph","Dask vs Spark: when to use which","Ray: distributed Python execution","Ray Data, Ray Train, Ray Tune","parallel hyperparameter search with Ray Tune","Modin: drop-in Pandas replacement"],
+        resources:["Dask docs","Ray docs — Train"],
+        exercise:"Use Ray Tune for distributed hyperparameter search across 5 XGBoost configurations. Run 50 trials in parallel. Compare to sequential Optuna.",
+        project:null},
+      {name:"Wed",topic:"Data engineering & orchestration",tag:"data eng",
+        concepts:["ETL vs ELT","Apache Airflow: DAGs, operators, sensors","dbt for SQL transformations","Prefect as modern Airflow alternative","Great Expectations for data quality","medallion architecture: bronze/silver/gold"],
+        resources:["Airflow docs","dbt docs — Getting Started"],
+        exercise:"Build an Airflow DAG with 5 tasks: download data → validate → clean → transform → load to warehouse. Add Great Expectations data checks.",
+        project:null},
+      {name:"Thu",topic:"Graph ML",tag:"Graph ML",
+        concepts:["graph structure: nodes, edges, adjacency matrix","graph neural networks (GNNs)","message passing framework","node classification, link prediction, graph classification","PyTorch Geometric (PyG)","GCN, GraphSAGE, GAT architectures"],
+        resources:["PyTorch Geometric docs","CS224W — Graph ML (Stanford, free)"],
+        exercise:"Train a GCN on Cora citation dataset (node classification). Compare GCN vs GraphSAGE vs GAT. Visualize learned embeddings with UMAP.",
+        project:null},
+      {name:"Fri",topic:"Causal inference",tag:"causal",
+        concepts:["correlation vs causation","potential outcomes framework (Rubin)","DAGs: d-separation, backdoor criterion","propensity score matching","difference-in-differences (DiD)","instrumental variables, regression discontinuity"],
+        resources:["The Book of Why (Pearl)","Causal Inference for the Brave and True (free online)"],
+        exercise:"On a dataset with observational data and a treatment variable, estimate the Average Treatment Effect (ATE) using: naive comparison, propensity score matching, and DiD.",
+        project:null},
+      {name:"Sat",topic:"Responsible AI & model explainability",tag:"XAI",
+        concepts:["SHAP values: global and local explanations","LIME for model-agnostic explanations","partial dependence plots (PDP), ICE plots","fairness metrics: demographic parity, equalized odds","bias auditing: Aequitas, Fairlearn","model cards and datasheets for datasets"],
+        resources:["SHAP docs","Fairlearn docs","Google — Model Cards"],
+        exercise:"For a loan approval model: compute SHAP summary plot, waterfall for 5 predictions, and run a fairness audit across demographic groups. Write a model card.",
+        project:null},
+      {name:"Sun",topic:"Weekend project",tag:"project",
+        concepts:[],resources:[],exercise:null,
+        project:{label:"PySpark pipeline",desc:"Process a 1M+ row dataset with PySpark: full ETL pipeline → feature engineering at scale → distributed model training with spark.ml → comparison with local Pandas approach. Deploy on Databricks Community Edition. Document speedup benchmarks."}}
+    ]},
+    {n:18,title:"Portfolio & job readiness",sub:"Land the data science role you deserve",days:[
+      {name:"Mon",topic:"GitHub portfolio strategy",tag:"portfolio",
+        concepts:["must-have projects: regression, classification, NLP, DL, deployment","README structure: problem, data, method, results, how to run","clean code: PEP8, type hints, docstrings","project notebooks: storytelling first, code second","GitHub profile README, pinned repos","badges: CI status, coverage, Colab button"],
+        resources:["GitHub — Make a README","Real Python — Writing Good READMEs"],
+        exercise:"Polish your 3 best projects: write professional READMEs, add requirements.txt, clean all notebooks, add CI badge. Ask a friend to review the READMEs for clarity.",
+        project:null},
+      {name:"Tue",topic:"Resume & LinkedIn for data science",tag:"job search",
+        concepts:["quantify every bullet with impact metrics","skills section: languages, frameworks, tools","projects section vs work experience","tailoring to job descriptions (ATS keywords)","LinkedIn: headline, about, featured section","networking: cold outreach, referrals, communities"],
+        resources:["Data Science Resume Guide (various blogs)","LinkedIn Learning — LinkedIn Profile optimization"],
+        exercise:"Write a first draft of your resume and LinkedIn. Get feedback from 2 people. Tailor one version to a specific job description you want.",
+        project:null},
+      {name:"Wed",topic:"Product & analytics case studies",tag:"interviews",
+        concepts:["metric definition & measurement","root cause analysis (metrics dropped by 20%)","A/B test design and analysis","prioritization frameworks (RICE, ICE)","experiment design pitfalls","communicating insights to non-technical stakeholders"],
+        resources:["Exponent — PM/DS interview prep","Mode — Analytics Case Studies"],
+        exercise:"Practice 5 case study questions from Exponent or DataLemur. Record yourself answering. Watch the recording. Focus on structure: hypothesis → analysis → recommendation.",
+        project:null},
+      {name:"Thu",topic:"ML system design interviews",tag:"interviews",
+        concepts:["system design framework: requirements → data → modeling → evaluation → serving → monitoring","designing a recommendation system","fraud detection system","search ranking","ad click-through rate prediction","trade-offs: latency vs accuracy, batch vs real-time"],
+        resources:["Designing ML Systems (Chip Huyen)","ML System Design (book by Valerii Babushkin)"],
+        exercise:"Do a timed (45-min) ML system design for: 'Design YouTube's recommendation system.' Write up your design. Compare to sample solutions online.",
+        project:null},
+      {name:"Fri",topic:"Coding interviews for data scientists",tag:"interviews",
+        concepts:["arrays, strings, hashmaps (most common)","sliding window, two pointers","sorting, binary search","dynamic programming (basic: Fibonacci, knapsack)","SQL window functions (often tested)","probability & stats brain teasers"],
+        resources:["LeetCode — Data Science tagged problems","DataLemur — SQL interview questions","NeetCode — Roadmap"],
+        exercise:"Solve 10 LeetCode easy/medium problems (focus: array + hashmap). Solve 5 SQL window function problems on DataLemur. Time each solution.",
+        project:null},
+      {name:"Sat",topic:"Mock interviews & communication",tag:"soft skills",
+        concepts:["STAR method for behavioral questions","explaining technical concepts to non-technical audiences","whiteboarding etiquette","asking clarifying questions","handling 'I don't know' gracefully","negotiating salary and offers"],
+        resources:["Pramp — peer mock interviews (free)","Interviewing.io — technical mock interviews"],
+        exercise:"Do 2 mock interviews on Pramp: one technical (ML/coding), one behavioral. Write down feedback. Identify 2 specific areas to improve.",
+        project:null},
+      {name:"Sun",topic:"Capstone project launch",tag:"project",
+        concepts:[],resources:["Kaggle Datasets","UCI ML Repository","data.gov, Hugging Face Datasets"],exercise:null,
+        project:{label:"Full capstone: data → deployed app",desc:"Launch your signature capstone project: choose a real business problem → collect/source data → full EDA → feature engineering → model comparison → MLflow tracking → FastAPI deployment → Streamlit front-end → Dockerized → CI/CD on GitHub Actions → live URL. Write a 500-word blog post explaining your process. This becomes your #1 portfolio piece."}}
+    ]}
+  ]}
+];
+
+let curPhase=0, curWeek=0;
+
+function phaseColor(p){ return C[data[p].color]; }
+
+function renderPhaseTabs(){
+  const nav=document.getElementById('phase-nav');
+  nav.innerHTML='';
+  data.forEach((p,i)=>{
+    const b=document.createElement('button');
+    b.className='ptab'+(i===curPhase?' on':'');
+    b.textContent=p.phase+' · '+p.label;
+    b.onclick=()=>{curPhase=i;curWeek=0;render();};
+    nav.appendChild(b);
+  });
+}
+
+function renderWeekTabs(){
+  const wt=document.getElementById('week-tabs');
+  wt.innerHTML='';
+  data[curPhase].weeks.forEach((w,i)=>{
+    const b=document.createElement('button');
+    b.className='wtab'+(i===curWeek?' on':'');
+    b.textContent='Week '+w.n+' — '+w.title;
+    b.onclick=()=>{curWeek=i;renderWeek();};
+    wt.appendChild(b);
+  });
+}
+
+function renderWeek(){
+  const p=data[curPhase], w=p.weeks[curWeek];
+  const pc=phaseColor(curPhase);
+
+  document.getElementById('prog-left').textContent='Phase '+(curPhase+1)+' of '+data.length+' · Week '+w.n+' of 18';
+  document.getElementById('prog-right').textContent=Math.round(((curPhase*5+curWeek+1)/18)*100)+'% complete';
+  const fill=document.getElementById('prog-fill');
+  fill.style.width=Math.round(((curPhase*5+curWeek+1)/18)*100)+'%';
+  fill.style.background=pc.dot;
+
+  const badge=document.getElementById('phase-badge');
+  badge.textContent=p.label;
+  badge.style.background=pc.bg;
+  badge.style.color=pc.text;
+  badge.style.border='0.5px solid '+pc.text+'44';
+
+  document.getElementById('phase-desc').textContent=p.desc;
+  document.getElementById('week-title').textContent='Week '+w.n+' — '+w.title;
+  document.getElementById('week-sub').textContent=w.sub;
+
+  document.querySelectorAll('.wtab').forEach((t,i)=>{
+    t.className='wtab'+(i===curWeek?' on':'');
+  });
+
+  const list=document.getElementById('days-list');
+  list.innerHTML='';
+  w.days.forEach((d,di)=>{
+    const dc=C[DAY_COLORS[di]];
+    const card=document.createElement('div');
+    card.className='day-card';
+    const isProj=d.tag==='project';
+
+    let bodyHtml='';
+    if(!isProj){
+      const pills=d.concepts.map(c=>`<span class="pill">${c}</span>`).join('');
+      const ress=d.resources.map(r=>`<div class="res"><span class="res-dot"></span><span>${r}</span></div>`).join('');
+      bodyHtml=`
+        <div>
+          <div class="section-label">Concepts to master</div>
+          <div class="pill-row">${pills}</div>
+        </div>
+        <div>
+          <div class="section-label">Resources</div>
+          <div class="resource-row">${ress}</div>
+        </div>
+        ${d.exercise?`<div>
+          <div class="section-label">Hands-on exercise</div>
+          <div class="exercise-box">${d.exercise}</div>
+        </div>`:''}
+      `;
+    } else {
+      bodyHtml=`
+        <div>
+          <div class="section-label">Resources</div>
+          <div class="resource-row">${d.resources.map(r=>`<div class="res"><span class="res-dot"></span><span>${r}</span></div>`).join('')}</div>
+        </div>
+      `;
+    }
+
+    const tagStyle=`background:${dc.bg};color:${dc.text};border:0.5px solid ${dc.text}33`;
+    card.innerHTML=`
+      <div class="day-header" onclick="toggleDay(this)">
+        <div class="day-num" style="background:${dc.bg};color:${dc.text}">${di+1}</div>
+        <div class="day-info">
+          <div class="day-name">${d.name}</div>
+          <div class="day-topic">${d.topic}</div>
+        </div>
+        <span class="day-tag" style="${tagStyle}">${d.tag}</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="day-body">
+        ${bodyHtml}
+      </div>
+      ${d.project?`<div class="proj-bar"><div class="proj-label">Weekend project — ${d.project.label}</div><div class="proj-desc">${d.project.desc}</div></div>`:''}
+    `;
+    list.appendChild(card);
+  });
+}
+
+function toggleDay(header){
+  const body=header.nextElementSibling;
+  const chev=header.querySelector('.chevron');
+  const open=body.classList.toggle('open');
+  chev.classList.toggle('open',open);
+}
+
+function render(){
+  renderPhaseTabs();
+  renderWeekTabs();
+  renderWeek();
+}
+
+render();
+</script>
