@@ -143,8 +143,7 @@ The roadmap currently has no way to record progress — you have to remember whe
 - Storage: PostgreSQL for user data, with a simple REST or GraphQL API
 - Deployment: Vercel (frontend) + Railway or Supabase (backend)
  
-Contributions toward this feature are especially welcome. If you want to take a lead on the tracker, open an issue to coordinate before starting.
- 
+
 ---
 
 ## License
