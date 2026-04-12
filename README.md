@@ -119,6 +119,33 @@ xdg-open index.html      # Linux
 # or double-click the file in Windows Explorer
 ```
 
+ 
+## Future Work
+ 
+### Study Tracker Web Application
+ 
+The roadmap currently has no way to record progress — you have to remember where you left off. A planned next step is to build a companion web application that lets you track your study activity day by day as you move through the curriculum.
+ 
+**Planned features:**
+ 
+- **Day completion tracking** — mark each day as done, in progress, or skipped, with progress persisted across sessions
+- **Exercise log** — a text field per day to record notes, code snippets, or reflections on the exercise
+- **Weekly project submission** — attach a link (e.g. GitHub repo or Colab notebook) to each weekend project for your own record
+- **Progress dashboard** — a visual overview showing completion percentage per phase and per week, streaks, and total study hours logged
+- **Study session timer** — a built-in timer to log how long you spent on each day's material
+- **Spaced repetition reminders** — flag concepts you found difficult and surface them for review later
+- **Export** — download your full study log as a CSV or PDF for portfolio documentation
+ 
+**Likely tech stack:**
+ 
+- Frontend: React + Tailwind CSS
+- Backend: FastAPI or Supabase (for auth + database)
+- Storage: PostgreSQL for user data, with a simple REST or GraphQL API
+- Deployment: Vercel (frontend) + Railway or Supabase (backend)
+ 
+Contributions toward this feature are especially welcome. If you want to take a lead on the tracker, open an issue to coordinate before starting.
+ 
+---
 
 ## License
 
